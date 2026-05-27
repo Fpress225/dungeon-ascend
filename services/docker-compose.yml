@@ -1,0 +1,31 @@
+services:
+  auth-service:
+    build: ./auth_service
+    ports:
+      - "8001:8001"
+    environment:
+      AUTH_SECRET_KEY: dev-shared-secret-change-in-production
+      AUTH_DATABASE_URL: sqlite:///./auth.db
+    volumes:
+      - auth-data:/app/data
+    working_dir: /app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001
+
+  stats-service:
+    build: ./stats_service
+    ports:
+      - "8002:8002"
+    environment:
+      STATS_JWT_SECRET_KEY: dev-shared-secret-change-in-production
+      STATS_DATABASE_URL: sqlite:///./stats.db
+      STATS_AUTH_SERVICE_URL: http://auth-service:8001
+    depends_on:
+      - auth-service
+    volumes:
+      - stats-data:/app/data
+    working_dir: /app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002
+
+volumes:
+  auth-data:
+  stats-data:
