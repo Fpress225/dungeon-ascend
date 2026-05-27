@@ -1,30 +1,50 @@
 services:
-  auth-service:
+  auth_service:
     build: ./auth_service
-    ports:
-      - "8001:8001"
+    image: dungeonascend/auth_service:latest
     environment:
       AUTH_SECRET_KEY: dev-shared-secret-change-in-production
       AUTH_DATABASE_URL: sqlite:///./auth.db
     volumes:
       - auth-data:/app/data
     working_dir: /app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8001
+    command: uvicorn app.main:app --host 0.0.0.0 --port 5001
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
 
-  stats-service:
+  stats_service:
     build: ./stats_service
-    ports:
-      - "8002:8002"
+    image: dungeonascend/stats_service:latest
     environment:
       STATS_JWT_SECRET_KEY: dev-shared-secret-change-in-production
       STATS_DATABASE_URL: sqlite:///./stats.db
-      STATS_AUTH_SERVICE_URL: http://auth-service:8001
+      STATS_AUTH_SERVICE_URL: http://auth_service:5001
     depends_on:
-      - auth-service
+      - auth_service
     volumes:
       - stats-data:/app/data
     working_dir: /app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8002
+    command: uvicorn app.main:app --host 0.0.0.0 --port 5002
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auth_service
+      - stats_service
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
 
 volumes:
   auth-data:
